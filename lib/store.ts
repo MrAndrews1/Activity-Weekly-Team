@@ -28,14 +28,25 @@ class RedisStore implements Store {
     return (await this.r.hget<string>(key, field)) ?? null;
   }
   async hgetall(key: string) {
-    return ((await this.r.hgetall<Record<string, string>>(key)) ?? {}) as Record<string, string>;
+    // Sin deserialización automática, Upstash puede devolver la lista plana [campo, valor, ...].
+    const raw = (await this.r.hgetall(key)) as unknown;
+    if (!raw) return {};
+    if (Array.isArray(raw)) {
+      const out: Record<string, string> = {};
+      for (let i = 0; i + 1 < raw.length; i += 2) out[String(raw[i])] = String(raw[i + 1]);
+      return out;
+    }
+    const out: Record<string, string> = {};
+    for (const [f, v] of Object.entries(raw as Record<string, unknown>))
+      out[f] = typeof v === "string" ? v : JSON.stringify(v);
+    return out;
   }
   async hset(key: string, field: string, value: string, ttl: number) {
     await Promise.all([this.r.hset(key, { [field]: value }), this.r.expire(key, ttl)]);
   }
   async hsetnx(key: string, field: string, value: string, ttl: number) {
     const [ok] = await Promise.all([this.r.hsetnx(key, field, value), this.r.expire(key, ttl)]);
-    return ok === 1;
+    return Number(ok) === 1;
   }
   async hdel(key: string, field: string) {
     await this.r.hdel(key, field);
