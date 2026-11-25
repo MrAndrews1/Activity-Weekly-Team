@@ -73,6 +73,11 @@ export default function HostPage({ params }: { params: Promise<{ code: string }>
       </div>
       {error && <div className="banner">{error}</div>}
       {actionError && <div className="banner">{actionError}</div>}
+      {state.host && !state.host.database && process.env.NODE_ENV === "production" && (
+        <div className="banner">
+          Falta conectar la base de datos en Vercel. Sin ella el juego no funciona bien con varias personas.
+        </div>
+      )}
 
       {state.phase === "lobby" && <Lobby state={state} code={code} act={act} busy={busy} />}
       {state.phase === "question" && <Question state={state} now={now} act={act} busy={busy} />}

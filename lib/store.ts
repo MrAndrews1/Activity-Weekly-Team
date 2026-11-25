@@ -98,12 +98,26 @@ class MemoryStore implements Store {
   }
 }
 
+/** Busca las credenciales de Upstash con cualquier prefijo (KV_, STORAGE_, UPSTASH_REDIS_…). */
+function creds() {
+  const env = process.env;
+  const pick = (suffixes: string[]) => {
+    for (const sfx of suffixes) {
+      const key = Object.keys(env).find((k) => k.endsWith(sfx) && !k.includes("READ_ONLY") && env[k]);
+      if (key) return env[key];
+    }
+    return undefined;
+  };
+  const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL || pick(["_REST_API_URL", "_REDIS_REST_URL"]);
+  const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN || pick(["_REST_API_TOKEN", "_REDIS_REST_TOKEN"]);
+  return { url, token };
+}
+
 const g = globalThis as unknown as { __store?: Store };
 
 export function store(): Store {
   if (g.__store) return g.__store;
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const { url, token } = creds();
   if (url && token) {
     g.__store = new RedisStore(
       new Redis({ url, token, automaticDeserialization: false, enableAutoPipelining: true })
@@ -117,8 +131,7 @@ export function store(): Store {
   return g.__store;
 }
 
-export const hasDatabase = () =>
-  Boolean(
-    (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
-      (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)
-  );
+export const hasDatabase = () => {
+  const { url, token } = creds();
+  return Boolean(url && token);
+};

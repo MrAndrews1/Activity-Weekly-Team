@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "crypto";
-import { store } from "./store";
+import { hasDatabase, store } from "./store";
 
 export const TTL = 60 * 60 * 24 * 7; // una semana
 export const MAX_FACT = 220;
@@ -347,6 +347,7 @@ export async function getState(code: string, opts: { playerId?: string | null; h
     awards: meta.phase === "final" ? awards(meta, players, facts ?? {}) : null,
     host: isHost
       ? {
+          database: hasDatabase(),
           facts: Object.entries(facts ?? {})
             .filter(([id]) => players[id])
             .map(([id, text]) => ({ id, name: name(id), text })),
